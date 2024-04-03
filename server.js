@@ -7,13 +7,32 @@ const app = express();
 const port = 3002;
 
 // MongoDB Connection (Replace with your MongoDB connection string)
+class PolynomialFunction {
+    constructor(expression, variables, constants, dependencies) {
+        this.expression = expression;
+        this.variables = variables;
+        this.constants = constants;
+  
+        this.dependencies = dependencies;
+    }
+
+
+}
+
 const mongoDBConnectionString = 'mongodb+srv://tanishmahajanm:tanish007@cluster0.51epja8.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0'; 
 mongoose.connect(mongoDBConnectionString, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('Connected to MongoDB'))
+  .then(() => {console.log('Connected to MongoDB')
+
+
+
+})
+
+
   .catch(err => console.error('Error connecting to MongoDB:', err));
 
 // Define your dataset schema and model here
 // ...
+
 
 const datasetSchema = new mongoose.Schema({
 
@@ -35,11 +54,91 @@ const datasetSchema = new mongoose.Schema({
     
 });
 
+
+const formulaSchema = new mongoose.Schema({
+    name: String,
+    expression: String,
+    dependencies: [String], 
+    variables: [String],
+    constants: [Number]
+ });
+ const Formula = mongoose.model('Formula', formulaSchema);
+
+
+async function addFormulaToMongoDB(name, expression, variables, constants, dependencies) {
+    try {
+        // Ensure Mongoose is connected (This should happen elsewhere in your application)
+        if (mongoose.connection.readyState !== 1) { // 1 means connected
+            throw new Error('Mongoose not connected');
+        }    
+
+        // Define your formula schema (if not already defined)
+
+
+        // Create your formula object
+        const formula = new PolynomialFunction(expression, variables, constants, dependencies);
+        const formulaData = new Formula({
+            name: name,
+           
+            dependencies: formula.dependencies,
+            expression: formula.expression,
+            variables: formula.variables,
+            constants: formula.constants
+        });
+
+        // Save the formula to MongoDB
+        const savedFormula = await formulaData.save(); 
+        console.log(`Formula '${name}' added to MongoDB with ID: ${savedFormula._id}`);
+        
+       
+
+    } catch (err) {
+        console.error('Error adding formula to MongoDB:', err);
+     
+    }
+}
+
+
+
+
 const Datasetbar = mongoose.model('Datasetbar', datasetbarSchema);
 
 // Middleware
 app.use(cors()); 
 app.use(bodyParser.json()); 
+
+
+app.get('/api/formulas', async (req, res) => {
+    try {
+      const formulas = await Formula.find({});
+      res.json(formulas);
+    } catch (err) {
+      res.status(500).json({ error: err });
+    }
+  });
+
+  app.post('/api/formulas', async (req, res) => {
+    try {
+      const { name, expression, variables, constants, dependencies } = req.body;
+  
+      // Validation (highly recommended):
+      //   * Ensure all expected fields are present.
+      //   * Validate the structure of the formula expression.
+  
+      const formula = new Formula({
+        name, 
+        expression, 
+        variables,
+        constants, 
+        dependencies
+      });
+  
+      const savedFormula = await formula.save();
+      res.status(201).json({ message: 'Formula added', formula: savedFormula }); 
+    } catch (err) {
+      res.status(500).json({ error: err.message }); 
+    }
+  });
 
 // API Endpoint: '/api/dataset'
 app.post('/api/dataset', (req, res) => {
@@ -114,6 +213,8 @@ app.get('/api/datasetbar', async (req, res) => {
         res.status(500).json({ error: err });
     }
 });
+
+
 
 
 app.listen(port, () => {
